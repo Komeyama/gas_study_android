@@ -1,0 +1,2 @@
+rootProject.name = "gas_study_android"
+include ':app'

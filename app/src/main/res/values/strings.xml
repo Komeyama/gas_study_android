@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">gas_study_android</string>
+    <string name="sign_in_with_google">sign in with Google</string>
+    <string name="access_token">access token</string>
+    <string name="refresh_token">refresh token</string>
+    <string name="request_message">request message</string>
+    <string name="blank">---</string>
+</resources>
