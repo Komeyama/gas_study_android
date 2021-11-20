@@ -28,6 +28,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var sharedPreference: SharedPreferences
     private var tokenStore = TokenStore()
+    private val SAVED_TIME = "save time"
+    private val EXPIRES_IN = 3590 * 1000 //[ms]
 
     private var googleSignInClient: GoogleSignInClient? = null
     private var retrofit = Retrofit.Builder()
@@ -53,9 +55,9 @@ class MainActivity : AppCompatActivity() {
         val view = binding.root
         setContentView(view)
 
-        initToken()
         initGoogleSignIn()
         initAuthApiService()
+        initToken()
     }
 
     override fun onStart() {
@@ -66,6 +68,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.requestMessage.setOnClickListener {
+            checkExpiredAndCreateOfToken()
             lifecycleScope.launch {
                 initGoogleAppsScript()
                 val response = execGoogleAppScript()
@@ -91,16 +94,26 @@ class MainActivity : AppCompatActivity() {
         Timber.d("store enc refresh token: $encryptRefreshToken")
         if (encryptRefreshToken != "") {
             refreshToken =
-                tokenStore.decryptString(TokenStore.REFRESH_TOKEN_AREAS, encryptRefreshToken.toString())
+                tokenStore.decryptString(
+                    TokenStore.REFRESH_TOKEN_AREAS,
+                    encryptRefreshToken.toString()
+                )
                     .toString()
             binding.refreshTokenValue.text = refreshToken
             Timber.d("store refresh token: $refreshToken")
         }
+
+        checkExpiredAndCreateOfToken()
     }
 
     private fun saveToken(name: String, value: String) {
         val decryptValue = tokenStore.encryptString(name, value)
         sharedPreference.edit().putString(name, decryptValue).apply()
+    }
+
+    private fun saveTime() {
+        val currentTime = System.currentTimeMillis()
+        sharedPreference.edit().putString(SAVED_TIME, currentTime.toString()).apply()
     }
 
     private fun initGoogleSignIn() {
@@ -141,6 +154,39 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Timber.d("access token get err: $e")
             null
+        }
+    }
+
+    private suspend fun getAccessTokenWithRefreshToken(refreshToken: String): AuthResponse? {
+        return try {
+            authApiService?.getAccessTokenWithRefreshToken(
+                refreshToken = refreshToken
+            )
+        } catch (e: Exception) {
+            Timber.d("access token get err(with refresh token): $e")
+            null
+        }
+    }
+
+    private fun checkExpiredAndCreateOfToken() {
+        val currentTime = System.currentTimeMillis()
+        val savedTime = sharedPreference.getString(SAVED_TIME, "0")
+        val diff = currentTime - (savedTime?.toLong() ?: 0L)
+        Timber.d("current time: $currentTime, saved time: $savedTime, diff time: $diff")
+        if (diff > EXPIRES_IN) {
+            lifecycleScope.launch {
+                Timber.d("create new access token!, refresh token: $refreshToken")
+                val response = getAccessTokenWithRefreshToken(refreshToken)
+                Timber.d("res: $response")
+                if (response?.access_token == null) return@launch
+                accessToken = response.access_token
+
+                saveToken(TokenStore.TOKEN_AREAS, accessToken)
+                binding.accessTokenValue.text = accessToken
+                Timber.d("new access token: $accessToken")
+
+                saveTime()
+            }
         }
     }
 
@@ -189,6 +235,8 @@ class MainActivity : AppCompatActivity() {
                     binding.accessTokenValue.text = accessToken
                     binding.refreshTokenValue.text = refreshToken
                     Timber.d("access token: $accessToken ,refresh token: $refreshToken")
+
+                    saveTime()
                 }
             }
         }

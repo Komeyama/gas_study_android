@@ -5,6 +5,6 @@ data class AuthResponse(
     var expires_in: Int,
     var scope: String,
     var token_type: String,
-    var refresh_token: String,
+    var refresh_token: String = "",
     var id_token: String
 )

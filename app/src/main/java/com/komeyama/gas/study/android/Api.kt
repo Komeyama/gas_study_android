@@ -24,7 +24,7 @@ interface Api {
     suspend fun getAccessTokenWithRefreshToken(
         @Field("client_id") clientId: String = BuildConfig.clientID,
         @Field("client_secret") clientSecret: String = BuildConfig.clientSecret,
-        @Field("refresh_token") code: String,
+        @Field("refresh_token") refreshToken: String,
         @Field("grant_type") grantType: String = GrantType.REFRESH_TOKEN.value,
         @Field("redirect_uri") redirectUri: String = BuildConfig.redirectURL,
     ): AuthResponse
