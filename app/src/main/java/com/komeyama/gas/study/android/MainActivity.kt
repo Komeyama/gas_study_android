@@ -1,5 +1,7 @@
 package com.komeyama.gas.study.android
 
+import android.content.Context
+import android.content.SharedPreferences
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
@@ -23,6 +25,9 @@ import timber.log.Timber
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+
+    private lateinit var sharedPreference: SharedPreferences
+    private var tokenStore = TokenStore()
 
     private var googleSignInClient: GoogleSignInClient? = null
     private var retrofit = Retrofit.Builder()
@@ -48,6 +53,7 @@ class MainActivity : AppCompatActivity() {
         val view = binding.root
         setContentView(view)
 
+        initToken()
         initGoogleSignIn()
         initAuthApiService()
     }
@@ -61,11 +67,40 @@ class MainActivity : AppCompatActivity() {
 
         binding.requestMessage.setOnClickListener {
             lifecycleScope.launch {
+                initGoogleAppsScript()
                 val response = execGoogleAppScript()
                 Timber.d("response: $response")
                 binding.message.text = response?.message.toString()
             }
         }
+    }
+
+    private fun initToken() {
+        tokenStore.prepareKeyStore()
+        sharedPreference = getSharedPreferences("token_store", Context.MODE_PRIVATE)
+        val encryptToken = sharedPreference.getString(TokenStore.TOKEN_AREAS, "")
+        Timber.d("store enc token: $encryptToken")
+        if (encryptToken != "") {
+            accessToken =
+                tokenStore.decryptString(TokenStore.TOKEN_AREAS, encryptToken.toString()).toString()
+            binding.accessTokenValue.text = accessToken
+            Timber.d("store token: $accessToken")
+        }
+
+        val encryptRefreshToken = sharedPreference.getString(TokenStore.REFRESH_TOKEN_AREAS, "")
+        Timber.d("store enc refresh token: $encryptRefreshToken")
+        if (encryptRefreshToken != "") {
+            refreshToken =
+                tokenStore.decryptString(TokenStore.REFRESH_TOKEN_AREAS, encryptRefreshToken.toString())
+                    .toString()
+            binding.refreshTokenValue.text = refreshToken
+            Timber.d("store refresh token: $refreshToken")
+        }
+    }
+
+    private fun saveToken(name: String, value: String) {
+        val decryptValue = tokenStore.encryptString(name, value)
+        sharedPreference.edit().putString(name, decryptValue).apply()
     }
 
     private fun initGoogleSignIn() {
@@ -148,10 +183,12 @@ class MainActivity : AppCompatActivity() {
                     accessToken = response.access_token
                     refreshToken = response.refresh_token
 
+                    saveToken(TokenStore.TOKEN_AREAS, accessToken)
+                    saveToken(TokenStore.REFRESH_TOKEN_AREAS, refreshToken)
+
                     binding.accessTokenValue.text = accessToken
                     binding.refreshTokenValue.text = refreshToken
                     Timber.d("access token: $accessToken ,refresh token: $refreshToken")
-                    initGoogleAppsScript()
                 }
             }
         }
