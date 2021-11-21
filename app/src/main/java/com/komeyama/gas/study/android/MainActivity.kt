@@ -68,8 +68,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.requestMessage.setOnClickListener {
-            checkExpiredAndCreateOfToken()
             lifecycleScope.launch {
+                checkExpiredAndCreateOfToken()
                 initGoogleAppsScript()
                 val response = execGoogleAppScript()
                 Timber.d("response: $response")
@@ -120,7 +120,6 @@ class MainActivity : AppCompatActivity() {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestScopes(
                 Scope("https://www.googleapis.com/auth/spreadsheets"),
-                Scope("https://www.googleapis.com/auth/drive.readonly")
             )
             .requestServerAuthCode(
                 BuildConfig.clientID,
@@ -177,7 +176,6 @@ class MainActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 Timber.d("create new access token!, refresh token: $refreshToken")
                 val response = getAccessTokenWithRefreshToken(refreshToken)
-                Timber.d("res: $response")
                 if (response?.access_token == null) return@launch
                 accessToken = response.access_token
 
@@ -186,6 +184,7 @@ class MainActivity : AppCompatActivity() {
                 Timber.d("new access token: $accessToken")
 
                 saveTime()
+                initAuthApiService()
             }
         }
     }
